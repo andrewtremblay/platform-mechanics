@@ -6,51 +6,327 @@ if sys.version_info[0] != 3:
 # PYTHON 3+ ONLY BEYOND THIS POINT
 #
 import pygame
-from pygame.locals import ( Color, QUIT, KEYDOWN, K_ESCAPE )
-# Default Settings
-BG_COLOR = Color(135, 206, 250) #sky blue
-MAX_FPS = 60
-# Game globals
-millis_elapsed = 0
-screen = None
-clock = None
+from enum import Enum
+# Global constants
 
-def update_world():
-    """Update function for our world """
-    global millis_elapsed
-    millis_elapsed += clock.get_time()
-    #millis_elapsed is total time elapsed since world bagan
+# Colors
+class Color(Enum):
+    Black = (0, 0, 0)
+    White = (255, 255, 255)
+    Green = (0, 255, 0)
+    Red = (255, 0, 0)
+    Blue = (0, 0, 255)
+
+# Screen dimensions
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
 
 
-def display_world():
-    """Display function for our world """
-    screen.fill(BG_COLOR)
-    #clear and draw our sprites
-    pygame.display.update()
+class JumpState(Enum):
+    grounded = 0
+    crouching = 1
+    jumping = 2
+    falling = 3
+    landing = 4
+
+class Player(pygame.sprite.Sprite):
+    """ This class represents the bar at the bottom that the player
+        controls. """
+
+    # -- Methods
+    def __init__(self):
+        """ Constructor function """
+
+        # Call the parent's constructor
+        super().__init__()
+
+        # Create an image of the block, and fill it with a color.
+        # This could also be an image loaded from the disk.
+        width = 40
+        height = 60
+        self.image = pygame.Surface([width, height])
+        self.image.fill(Color.Red.value)
+
+        # Set a referance to the image rect.
+        self.rect = self.image.get_rect()
+
+        # Set speed vector of player
+        self.change_x = 0
+        self.change_y = 0
+
+        # List of sprites we can bump against
+        self.level = None
+
+        self.jump_state = JumpState.grounded
+
+    def update(self):
+
+
+        if self.jump_state == JumpState.crouching and self.crouching_ticks < pygame.time.get_ticks(): # > crouching > jumping > falling > landing
+            self.jump_state = JumpState.jumping
+            self.change_y = -10
+
+
+        # Gravity
+        self.calc_grav()
+
+        # Move left/right
+        self.rect.x += self.change_x
+
+        # See if we hit anything
+        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
+        for block in block_hit_list:
+            # If we are moving right,
+            # set our right side to the left side of the item we hit
+            if self.change_x > 0:
+                self.rect.right = block.rect.left
+            elif self.change_x < 0:
+                # Otherwise if we are moving left, do the opposite.
+                self.rect.left = block.rect.right
+
+        # Move up/down
+        self.rect.y += self.change_y
+
+        # Check and see if we hit anything
+        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
+        for block in block_hit_list:
+
+            # Reset our position based on the top/bottom of the object.
+            if self.change_y > 0:
+                self.rect.bottom = block.rect.top
+                self.jump_state = JumpState.grounded
+            elif self.change_y < 0:
+                self.rect.top = block.rect.bottom
+
+            # Stop our vertical movement
+            self.change_y = 0
+
+    def calc_grav(self):
+        """ Calculate effect of gravity. """
+        #self.jump_state
+
+        if self.change_y == 0:
+            self.change_y = 1
+        elif self.change_y < 0:
+            self.change_y += .35
+        elif self.change_y > 0:
+            self.change_y += .35
+            self.jump_state = JumpState.falling
+
+        # See if we are on the ground.
+        if self.rect.y >= SCREEN_HEIGHT - self.rect.height and self.change_y >= 0:
+            self.change_y = 0
+            self.rect.y = SCREEN_HEIGHT - self.rect.height
+            if self.jump_state != JumpState.crouching:
+                self.jump_state = JumpState.grounded
+
+
+    def is_on_platform(self):
+        # move down a bit and see if there is a platform below us.
+        # Move down 2 pixels because it doesn't work well if we only move down
+        # 1 when working with a platform moving down.
+        self.rect.y += 2
+        platform_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
+        self.rect.y -= 2
+        # If it is ok to jump, set our speed upwards
+        return (len(platform_hit_list) > 0 or self.rect.bottom >= SCREEN_HEIGHT)
+
+
+
+    def jump_pressed(self):
+        """ Called when user hits 'jump' button. """
+        if self.jump_state == JumpState.grounded:
+            self.jump_state = JumpState.crouching
+            self.crouching_ticks = pygame.time.get_ticks() + 50
+        else:
+            print("no jump")
+
+    def jump_released(self):
+        """ Called when user releases 'jump' button. """
+        if self.jump_state == JumpState.crouching:
+            self.change_y
+        if self.change_y < 0:
+            self.change_y = 0
+
+    # Player-controlled movement:
+    def go_left(self):
+        """ Called when the user hits the left arrow. """
+        self.change_x = -6
+
+    def go_right(self):
+        """ Called when the user hits the right arrow. """
+        self.change_x = 6
+
+    def stop(self):
+        """ Called when the user lets off the keyboard. """
+        self.change_x = 0
+
+
+class Platform(pygame.sprite.Sprite):
+    """ Platform the user can jump on """
+
+    def __init__(self, width, height):
+        """ Platform constructor. Assumes constructed with user passing in
+            an array of 5 numbers like what's defined at the top of this
+            code. """
+        super().__init__()
+
+        self.image = pygame.Surface([width, height])
+        self.image.fill(Color.Green.value)
+
+        self.rect = self.image.get_rect()
+
+
+class Level(object):
+    """ This is a generic super-class used to define a level.
+        Create a child class for each level with level-specific
+        info. """
+
+    def __init__(self, player):
+        """ Constructor. Pass in a handle to player. Needed for when moving platforms
+            collide with the player. """
+        self.platform_list = pygame.sprite.Group()
+        self.enemy_list = pygame.sprite.Group()
+        self.player = player
+
+        # Background image
+        self.background = None
+
+    # Update everythign on this level
+    def update(self):
+        """ Update everything in this level."""
+        self.platform_list.update()
+        self.enemy_list.update()
+
+    def draw(self, screen):
+        """ Draw everything on this level. """
+
+        # Draw the background
+        screen.fill(Color.Blue.value)
+
+        # Draw all the sprite lists that we have
+        self.platform_list.draw(screen)
+        self.enemy_list.draw(screen)
+
+
+# Create platforms for the level
+class Level_01(Level):
+    """ Definition for level 1. """
+
+    def __init__(self, player):
+        """ Create level 1. """
+
+        # Call the parent constructor
+        Level.__init__(self, player)
+
+        # Array with width, height, x, and y of platform
+        level = [[210, 70, 500, 500],
+                 [210, 70, 200, 400],
+                 [210, 70, 600, 300],
+                 ]
+
+        # Go through the array above and add platforms
+        for platform in level:
+            block = Platform(platform[0], platform[1])
+            block.rect.x = platform[2]
+            block.rect.y = platform[3]
+            block.player = self.player
+            self.platform_list.add(block)
 
 
 def main():
-    """Holds main game loop and setup code """
-    global clock, screen
-    screen = pygame.display.set_mode((320, 240)) #setup window display
-    clock = pygame.time.Clock() #setup clock and fixed timestep
-    #TODO: reload our previous physics/settings
-    game_is_running = True #begin game loop
-    while(game_is_running):
-        #input events
-        for e in pygame.event.get():
-            if e.type == QUIT: game_is_running = False
-            elif e.type == KEYDOWN:
-                if e.key == K_ESCAPE: game_is_running = False
-        update_world()
-        display_world()
-        clock.tick(MAX_FPS) #never run the loop more than MAX_FPS
-        pygame.display.set_caption("fps: " + str(clock.get_fps()))
-    #TODO: add some save/quit code to resume from our last settings
-    quit()
+    """ Main Program """
+    pygame.init()
+    # set up fonts
+    basicFont = pygame.font.SysFont(None, 48)
 
 
+    # Set the height and width of the screen
+    size = [SCREEN_WIDTH, SCREEN_HEIGHT]
+    screen = pygame.display.set_mode(size)
+
+    pygame.display.set_caption("Platformer Jumper")
+
+    # Create the player
+    player = Player()
+
+    # Create all the levels
+    level_list = []
+    level_list.append( Level_01(player) )
+
+    # Set the current level
+    current_level_no = 0
+    current_level = level_list[current_level_no]
+
+    active_sprite_list = pygame.sprite.Group()
+    player.level = current_level
+
+    player.rect.x = 340
+    player.rect.y = SCREEN_HEIGHT - player.rect.height
+    active_sprite_list.add(player)
+
+    # Loop until the user clicks the close button.
+    done = False
+
+    # Used to manage how fast the screen updates
+    clock = pygame.time.Clock()
+
+    # -------- Main Program Loop -----------
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    player.go_left()
+                if event.key == pygame.K_RIGHT:
+                    player.go_right()
+                if event.key == pygame.K_UP:
+                    player.jump_pressed()
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT and player.change_x < 0:
+                    player.stop()
+                if event.key == pygame.K_RIGHT and player.change_x > 0:
+                    player.stop()
+                if event.key == pygame.K_UP:
+                    player.jump_released()
+
+
+        # Update the player.
+        active_sprite_list.update()
+
+        # Update items in the level
+        current_level.update()
+
+        # If the player gets near the right side, shift the world left (-x)
+        if player.rect.right > SCREEN_WIDTH:
+            player.rect.right = SCREEN_WIDTH
+
+        # If the player gets near the left side, shift the world right (+x)
+        if player.rect.left < 0:
+            player.rect.left = 0
+
+        # ALL CODE TO DRAW SHOULD GO BELOW THIS COMMENT
+        current_level.draw(screen)
+        active_sprite_list.draw(screen)
+        # set up the text
+        text = basicFont.render(player.jump_state.name, True, Color.White.value, Color.Blue.value)
+        textRect = text.get_rect()
+        textRect.centerx = screen.get_rect().centerx
+        screen.blit(text, textRect)
+        # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
+
+        # Limit to 60 frames per second
+        clock.tick(60)
+
+        # Go ahead and update the screen with what we've drawn.
+        pygame.display.flip()
+
+    # Be IDLE friendly. If you forget this line, the program will 'hang'
+    # on exit.
+    pygame.quit()
 
 if __name__ == "__main__":
-    pygame.init()
     main()
