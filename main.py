@@ -1,42 +1,55 @@
+"""Platform Mechanics.
+
+Run all the classes together in one file for easier demoing.
+"""
 import sys
-if sys.version_info[0] != 3:
-    print("This project requires Python 3")
-    exit()
-#
-# PYTHON 3+ ONLY BEYOND THIS POINT
-#
 import pygame
 from enum import Enum
-# Global constants
 
-# Colors
+# Screen dimensions
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+MAX_BASE_FALL_SPEED = 12
+MAX_BASE_JUMP_SPEED = -12
+DEBUG_LOG_ENABLED = True  # False
+
+
 class Color(Enum):
+    """Container for common colors."""
+
     Black = (0, 0, 0)
     White = (255, 255, 255)
     Green = (0, 255, 0)
     Red = (255, 0, 0)
     Blue = (0, 0, 255)
 
-# Screen dimensions
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-
 
 class JumpState(Enum):
+    """Also known as "leg state"."""
+
     grounded = 0
     crouching = 1
     jumping = 2
     falling = 3
     landing = 4
 
+
+def _jumpstate_tostr(x):
+    return {
+        JumpState.grounded: 'grounded',
+        JumpState.crouching: 'crouching',
+        JumpState.jumping: 'jumping',
+        JumpState.falling: 'falling',
+        JumpState.landing: 'landing',
+    }[x]
+
+
 class Player(pygame.sprite.Sprite):
-    """ This class represents the bar at the bottom that the player
-        controls. """
+    """Represents the sprite that the player controls."""
 
     # -- Methods
     def __init__(self):
-        """ Constructor function """
-
+        """Construct the sprite."""
         # Call the parent's constructor
         super().__init__()
 
@@ -56,85 +69,93 @@ class Player(pygame.sprite.Sprite):
 
         # List of sprites we can bump against
         self.level = None
-
+        _debug_log("set grounded jump_state (init)")
         self.jump_state = JumpState.grounded
+        self.DEBUG_PREV_JUMP_STATE = self.jump_state
 
     def update(self):
-
-
-        if self.jump_state == JumpState.crouching and self.crouching_ticks < pygame.time.get_ticks(): # > crouching > jumping > falling > landing
+        """Determine sprite position, jump_state, and speed."""
+        # > crouching > jumping > falling > landing
+        if (self.jump_state == JumpState.crouching and
+                self.crouching_ticks < pygame.time.get_ticks()):
             self.jump_state = JumpState.jumping
             self.change_y = -10
+        else:
+            # Gravity
+            self.calc_grav()
+            # Move left/right
+            self.rect.x += self.change_x
+            # See if we hit anything
+            block_hit_list = pygame.sprite.spritecollide(
+                self, self.level.platform_list, False)
+            for block in block_hit_list:
+                # If we are moving right,
+                # set our right side to the left side of the item we hit
+                if self.change_x > 0:
+                    self.rect.right = block.rect.left
+                elif self.change_x < 0:
+                    # Otherwise if we are moving left, do the opposite.
+                    self.rect.left = block.rect.right
 
-
-        # Gravity
-        self.calc_grav()
-
-        # Move left/right
-        self.rect.x += self.change_x
-
-        # See if we hit anything
-        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
-        for block in block_hit_list:
-            # If we are moving right,
-            # set our right side to the left side of the item we hit
-            if self.change_x > 0:
-                self.rect.right = block.rect.left
-            elif self.change_x < 0:
-                # Otherwise if we are moving left, do the opposite.
-                self.rect.left = block.rect.right
-
-        # Move up/down
-        self.rect.y += self.change_y
-
-        # Check and see if we hit anything
-        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
-        for block in block_hit_list:
-
-            # Reset our position based on the top/bottom of the object.
-            if self.change_y > 0:
-                self.rect.bottom = block.rect.top
-                self.jump_state = JumpState.grounded
-            elif self.change_y < 0:
-                self.rect.top = block.rect.bottom
-
-            # Stop our vertical movement
-            self.change_y = 0
+            # Move up/down
+            self.rect.y += self.change_y
+            # Check and see if we hit anything
+            block_hit_list = pygame.sprite.spritecollide(
+                self, self.level.platform_list, False)
+            for block in block_hit_list:
+                # Reset our position based on the top/bottom of the object.
+                if self.change_y > 0:
+                    self.rect.bottom = block.rect.top
+                    _debug_log("set grounded jump_state (update)")
+                    self.jump_state = JumpState.grounded
+                elif self.change_y < 0:
+                    self.rect.top = block.rect.bottom
+                self.change_y = 0
+        # handle debug jump state
+        if self.DEBUG_PREV_JUMP_STATE != self.jump_state:
+            _debug_log("jump state change " + self.jump_state.name)
+            self.DEBUG_PREV_JUMP_STATE = self.jump_state
 
     def calc_grav(self):
-        """ Calculate effect of gravity. """
-        #self.jump_state
-
-        if self.change_y == 0:
-            self.change_y = 1
-        elif self.change_y < 0:
-            self.change_y += .35
-        elif self.change_y > 0:
-            self.change_y += .35
-            self.jump_state = JumpState.falling
-
-        # See if we are on the ground.
-        if self.rect.y >= SCREEN_HEIGHT - self.rect.height and self.change_y >= 0:
+        """Calculate effect of gravity."""
+        # but override all this if we're on a platform
+        if self.is_on_platform():
             self.change_y = 0
-            self.rect.y = SCREEN_HEIGHT - self.rect.height
-            if self.jump_state != JumpState.crouching:
+            # if we are crouching on the ground.
+            if(self.jump_state == JumpState.crouching or
+               self.jump_state == JumpState.jumping):
+                if(self.crouching_ticks < pygame.time.get_ticks()):
+                    # apply impulse of player jump
+                    self.change_y = -100
+                    self.jump_state = JumpState.jumping
+                    self.rect.y = self.rect.y - 1
+            else:
+                # if we are not crouching or jumping then
+                # we are falling, landing, or grounding
+                # _debug_log("set grounded jump_state (calc_grav)")
                 self.jump_state = JumpState.grounded
-
+        else:
+            if self.change_y <= 0:
+                self.change_y += .35
+            elif self.change_y > 0:
+                self.change_y += .35
+                self.jump_state = JumpState.falling
+        # calmp the parameters
+        self.change_y = min(self.change_y, MAX_BASE_FALL_SPEED)
+        self.change_y = max(self.change_y, MAX_BASE_JUMP_SPEED)
 
     def is_on_platform(self):
-        # move down a bit and see if there is a platform below us.
-        # Move down 2 pixels because it doesn't work well if we only move down
-        # 1 when working with a platform moving down.
+        """check whether sprite is on a platform."""
         self.rect.y += 2
-        platform_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
+        platform_hit_list = pygame.sprite.spritecollide(
+            self, self.level.platform_list, False)
         self.rect.y -= 2
-        # If it is ok to jump, set our speed upwards
-        return (len(platform_hit_list) > 0 or self.rect.bottom >= SCREEN_HEIGHT)
-
-
+        return (len(platform_hit_list) > 0 or
+                self.rect.bottom >= SCREEN_HEIGHT)
 
     def jump_pressed(self):
-        """ Called when user hits 'jump' button. """
+        """Called on the frame when the user presses 'jump' button."""
+        _debug_log("jump_pressed")
         if self.jump_state == JumpState.grounded:
             self.jump_state = JumpState.crouching
             self.crouching_ticks = pygame.time.get_ticks() + 50
@@ -142,33 +163,32 @@ class Player(pygame.sprite.Sprite):
             print("no jump")
 
     def jump_released(self):
-        """ Called when user releases 'jump' button. """
+        """Called on the frame when the user releases 'jump' button."""
         if self.jump_state == JumpState.crouching:
-            self.change_y
+            self.change_y = 12
+            self.jump_state = JumpState.jumping
         if self.change_y < 0:
             self.change_y = 0
 
     # Player-controlled movement:
     def go_left(self):
-        """ Called when the user hits the left arrow. """
+        """Called when the user hits the left arrow."""
         self.change_x = -6
 
     def go_right(self):
-        """ Called when the user hits the right arrow. """
+        """Called when the user hits the right arrow."""
         self.change_x = 6
 
     def stop(self):
-        """ Called when the user lets off the keyboard. """
+        """Called when the user lets off the keyboard."""
         self.change_x = 0
 
 
 class Platform(pygame.sprite.Sprite):
-    """ Platform the user can jump on """
+    """Platforms are sprites the user can jump off of and land on."""
 
     def __init__(self, width, height):
-        """ Platform constructor. Assumes constructed with user passing in
-            an array of 5 numbers like what's defined at the top of this
-            code. """
+        """Construct the platorm with a size and position."""
         super().__init__()
 
         self.image = pygame.Surface([width, height])
@@ -178,13 +198,15 @@ class Platform(pygame.sprite.Sprite):
 
 
 class Level(object):
-    """ This is a generic super-class used to define a level.
-        Create a child class for each level with level-specific
-        info. """
+    """
+    This is a generic super-class used to define a level.
+
+    Create a child class for each level with level-specific
+    info.
+    """
 
     def __init__(self, player):
-        """ Constructor. Pass in a handle to player. Needed for when moving platforms
-            collide with the player. """
+        """Construct the platform list, enemy list, and player."""
         self.platform_list = pygame.sprite.Group()
         self.enemy_list = pygame.sprite.Group()
         self.player = player
@@ -194,28 +216,27 @@ class Level(object):
 
     # Update everythign on this level
     def update(self):
-        """ Update everything in this level."""
+        """Update everything in this level."""
         self.platform_list.update()
         self.enemy_list.update()
 
     def draw(self, screen):
-        """ Draw everything on this level. """
-
+        """Draw everything on this level."""
         # Draw the background
         screen.fill(Color.Blue.value)
-
         # Draw all the sprite lists that we have
         self.platform_list.draw(screen)
         self.enemy_list.draw(screen)
 
 
 # Create platforms for the level
+
+
 class Level_01(Level):
-    """ Definition for level 1. """
+    """Definition for level 1."""
 
     def __init__(self, player):
-        """ Create level 1. """
-
+        """Create level 1."""
         # Call the parent constructor
         Level.__init__(self, player)
 
@@ -235,11 +256,10 @@ class Level_01(Level):
 
 
 def main():
-    """ Main Program """
+    """Main Loop."""
     pygame.init()
     # set up fonts
     basicFont = pygame.font.SysFont(None, 48)
-
 
     # Set the height and width of the screen
     size = [SCREEN_WIDTH, SCREEN_HEIGHT]
@@ -252,7 +272,7 @@ def main():
 
     # Create all the levels
     level_list = []
-    level_list.append( Level_01(player) )
+    level_list.append(Level_01(player))
 
     # Set the current level
     current_level_no = 0
@@ -293,7 +313,6 @@ def main():
                 if event.key == pygame.K_UP:
                     player.jump_released()
 
-
         # Update the player.
         active_sprite_list.update()
 
@@ -312,7 +331,8 @@ def main():
         current_level.draw(screen)
         active_sprite_list.draw(screen)
         # set up the text
-        text = basicFont.render(player.jump_state.name, True, Color.White.value, Color.Blue.value)
+        text = basicFont.render(player.jump_state.name, True,
+                                Color.White.value, Color.Blue.value)
         textRect = text.get_rect()
         textRect.centerx = screen.get_rect().centerx
         screen.blit(text, textRect)
@@ -328,5 +348,14 @@ def main():
     # on exit.
     pygame.quit()
 
+
+def _debug_log(stringToPrint):
+    if DEBUG_LOG_ENABLED:
+        print(stringToPrint)
+
+# Hard-require Python version 3+
+if sys.version_info[0] != 3:
+    print("This project requires Python 3")
+    exit()
 if __name__ == "__main__":
     main()
