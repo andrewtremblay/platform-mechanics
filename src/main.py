@@ -3,7 +3,7 @@ import sys
 import pygame
 from base.color import Color
 import config as conf
-from levels import Level_01
+import levels as lvls
 from sprites import player
 
 # PYTHON 3+ ONLY BEYOND THIS POINT
@@ -27,8 +27,7 @@ def main():
     the_player = player.Player()
 
     # Create all the levels
-    level_list = []
-    level_list.append(Level_01(player))
+    level_list = lvls.build_levels(the_player)
 
     # Set the current level
     current_level_no = 0
