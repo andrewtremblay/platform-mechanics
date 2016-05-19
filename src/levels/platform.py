@@ -1,6 +1,8 @@
+"""Platform package."""
 import pygame
 
 from base.color import Color
+
 
 class Platform(pygame.sprite.Sprite):
     """Platforms are sprites the user can jump off of and land on."""

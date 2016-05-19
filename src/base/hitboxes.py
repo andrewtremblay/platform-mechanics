@@ -3,13 +3,13 @@ Hitboxes module.
 
 Common hitboxes used around the project.
 """
-import config
+import configs as conf
 
 
 class HITBOX:
     """Common hitboxes."""
 
-    BOTTOM_SCREEN = [config.SCREEN_WIDTH,
-                     config.PLAYER.INITIAL.HEIGHT,
+    BOTTOM_SCREEN = [conf.UI.SCREEN_WIDTH,
+                     conf.PLAYER.INITIAL.HEIGHT,
                      0,
-                     config.SCREEN_HEIGHT]
+                     conf.UI.SCREEN_HEIGHT]

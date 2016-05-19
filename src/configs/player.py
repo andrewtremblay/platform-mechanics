@@ -1,23 +1,15 @@
 """
-Config package.
+Configs package.
 
 A container holding constants that other packages share.
 """
-# Screen dimensions
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
 
-DEBUG_LOG_ENABLED = True
+from .world import WORLD
 
 
-class WORLD:
-    """World constants."""
-
-    GRAVITY = .35
-
-
-class PLAYER:
+class PlayerConfig:
     """Player constants."""
+
     # TODO: have the jump decay be different from base gravity
     JUMP_DECAY = WORLD.GRAVITY
 
@@ -30,8 +22,8 @@ class PLAYER:
     class INITIAL:
         WIDTH = 40  # width of the player base sprite
         HEIGHT = 60  # height of the player base sprite
-        JUMP_SPEED = -6  # a regular hold-button-to-jump jump
-        CROUCH_JUMP_SPEED = -12  # used when jumping right out of a crouch
+        FULL_HOP_JUMP_SPEED = -12 # a regular hold-button-to-jump jump
+        SHORT_HOP_JUMP_SPEED = -6  # used when jumping right out of a crouch
 
     # Movement (only horizontal right now)
     class MOVE:
@@ -41,3 +33,5 @@ class PLAYER:
     class MAX:
         BASE_FALL_SPEED = 12  # can't fall faster than this
         BASE_JUMP_SPEED = -12  # can't jump up faster than this
+
+PLAYER = PlayerConfig()

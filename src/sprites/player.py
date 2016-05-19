@@ -9,8 +9,8 @@ import pygame
 
 from base.color import Color
 from debug import log
-import config as conf
-from config import PLAYER as P
+import configs as conf
+from configs import PLAYER as P
 
 from .jumpstate import JumpState
 
@@ -33,7 +33,7 @@ class Player(pygame.sprite.Sprite):
         # Set a referance to the image rect.
         self.rect = self.image.get_rect()
 
-        # Set speed vector of player
+        # Set initial speed vector of player
         self.change_x = 0
         self.change_y = 0
 
@@ -50,7 +50,7 @@ class Player(pygame.sprite.Sprite):
                 self.crouching_ticks < pygame.time.get_ticks()):
             # we've run out of time, start jumping
             self.jump_state = JumpState.jumping
-            self.change_y = P.INITIAL.JUMP_SPEED
+            self.change_y = P.INITIAL.FULL_HOP_JUMP_SPEED
         else:
             # Gravity
             self.calc_grav()
@@ -97,7 +97,7 @@ class Player(pygame.sprite.Sprite):
                 if(self.crouching_ticks < pygame.time.get_ticks()):
                     # apply default jump
                     self.jump_state = JumpState.jumping
-                    self.change_y = P.JUMP_SPEED
+                    self.change_y = P.SHORT_HOP_JUMP_SPEED
             elif(self.jump_state == JumpState.grounded):
                 self.change_y = 0
             else:
@@ -119,8 +119,9 @@ class Player(pygame.sprite.Sprite):
         platform_hit_list = pygame.sprite.spritecollide(
             self, self.level.platform_list, False)
         self.rect.y -= 2
-        return (len(platform_hit_list) > 0 or
-                self.rect.bottom >= conf.SCREEN_HEIGHT)
+        return ((len(platform_hit_list) > 0 or
+                self.rect.bottom >= conf.UI.SCREEN_HEIGHT) and
+                self.jump_state != JumpState.jumping)
 
     def jump_pressed(self):
         """Called on the frame when the user presses 'jump' button."""
@@ -135,7 +136,7 @@ class Player(pygame.sprite.Sprite):
         """Called on the frame when the user releases 'jump' button."""
         if self.jump_state == JumpState.crouching:
             self.jump_state = JumpState.jumping
-            self.change_y = P.INITIAL.CROUCH_JUMP_SPEED
+            self.change_y = P.INITIAL.SHORT_HOP_JUMP_SPEED
 
     # Player-controlled movement:
     def go_left(self):

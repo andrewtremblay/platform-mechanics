@@ -2,7 +2,7 @@
 import sys
 import pygame
 from base.color import Color
-import config as conf
+import configs as conf
 import levels as lvls
 from sprites import player
 
@@ -15,10 +15,11 @@ if sys.version_info[0] != 3:
 def main():
     """control the initialization of levels and mechanics."""
     pygame.init()
+    # start loading the relevant data
     # set up fonts
     basicFont = pygame.font.SysFont(None, 48)
     # Set the height and width of the screen
-    size = [conf.SCREEN_WIDTH, conf.SCREEN_HEIGHT]
+    size = [conf.UI.SCREEN_WIDTH, conf.UI.SCREEN_HEIGHT]
     screen = pygame.display.set_mode(size)
 
     pygame.display.set_caption("Platformer Jumper")
@@ -37,7 +38,7 @@ def main():
     the_player.level = current_level
 
     the_player.rect.x = 340
-    the_player.rect.y = conf.SCREEN_HEIGHT - the_player.rect.height
+    the_player.rect.y = conf.UI.SCREEN_HEIGHT - the_player.rect.height
     active_sprite_list.add(the_player)
 
     # Loop until the user clicks the close button.
@@ -75,8 +76,8 @@ def main():
         current_level.update()
 
         # If the player gets near the right side, shift the world left (-x)
-        if the_player.rect.right > conf.SCREEN_WIDTH:
-            the_player.rect.right = conf.SCREEN_WIDTH
+        if the_player.rect.right > conf.UI.SCREEN_WIDTH:
+            the_player.rect.right = conf.UI.SCREEN_WIDTH
 
         # If the player gets near the left side, shift the world right (+x)
         if the_player.rect.left < 0:
