@@ -18,7 +18,6 @@ TODO: create config files for the following adjectives
 import json
 from pprint import pprint
 # local packages
-from .debug import DEBUG
 from .player import PLAYER
 from .world import WORLD
 from .ui import UI

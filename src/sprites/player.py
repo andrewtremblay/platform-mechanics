@@ -8,7 +8,7 @@ Player contains all behavior related to the player sprite. This
 import pygame
 
 from base.color import Color
-from debug import log
+from debug import DEBUG
 import configs as conf
 from configs import PLAYER as P
 
@@ -39,7 +39,7 @@ class Player(pygame.sprite.Sprite):
 
         # List of sprites we can bump against
         self.level = None
-        log.Debug("set grounded jump_state (init)")
+        DEBUG.Log("set grounded jump_state (init)")
         self.jump_state = JumpState.grounded
         self.DEBUG_PREV_JUMP_STATE = self.jump_state
 
@@ -76,14 +76,14 @@ class Player(pygame.sprite.Sprite):
                 # Reset our position based on the top/bottom of the object.
                 if self.change_y > 0:
                     self.rect.bottom = block.rect.top
-                    log.Debug("set grounded jump_state (update)")
+                    DEBUG.Log("set grounded jump_state (update)")
                     self.jump_state = JumpState.grounded
                 elif self.change_y < 0:
                     self.rect.top = block.rect.bottom
                 self.change_y = 0
         # handle debug jump state
         if self.DEBUG_PREV_JUMP_STATE != self.jump_state:
-            log.Debug("jump state change " + self.jump_state.name)
+            DEBUG.Log("jump state change " + self.jump_state.name)
             self.DEBUG_PREV_JUMP_STATE = self.jump_state
 
     def calc_grav(self):
@@ -125,12 +125,12 @@ class Player(pygame.sprite.Sprite):
 
     def jump_pressed(self):
         """Called on the frame when the user presses 'jump' button."""
-        log.Debug("jump_pressed")
+        DEBUG.Log("jump_pressed")
         if self.jump_state == JumpState.grounded:
             self.jump_state = JumpState.crouching
             self.crouching_ticks = pygame.time.get_ticks() + P.CROUCH_DELAY
         else:
-            log.Debug("no jump")
+            DEBUG.Log("no jump")
 
     def jump_released(self):
         """Called on the frame when the user releases 'jump' button."""
