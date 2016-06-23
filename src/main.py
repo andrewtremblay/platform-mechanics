@@ -5,6 +5,7 @@ from base.color import Color
 import configs as conf
 import levels as lvls
 from sprites import player
+from base.controls import Controls
 
 # PYTHON 3+ ONLY BEYOND THIS POINT
 if sys.version_info[0] != 3:
@@ -49,29 +50,7 @@ def main():
 
     # -------- Main Program Loop -----------
     while not done:
-        for event in pygame.event.get():
-            done = (event.type == pygame.QUIT)
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    the_player.go_left()
-                if event.key == pygame.K_RIGHT:
-                    the_player.go_right()
-                if event.key == pygame.K_UP:
-                    the_player.jump_pressed()
-                # check for escape keypresses
-                if event.key == pygame.K_ESCAPE or \
-                        event.key == pygame.K_q or \
-                        event.key == pygame.K_DELETE:
-                    done = True
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT and the_player.change_x < 0:
-                    the_player.stop()
-                if event.key == pygame.K_RIGHT and the_player.change_x > 0:
-                    the_player.stop()
-                if event.key == pygame.K_UP:
-                    the_player.jump_released()
+        done = Controls.update_player_from_events(the_player)
 
         # Update the player.
         active_sprite_list.update()

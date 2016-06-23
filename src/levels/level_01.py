@@ -5,7 +5,7 @@ Just a few platforms hanging around.
 """
 
 
-from base.hitboxes import HITBOX
+from base.hitboxes import Hitbox
 from .level import Level
 from .platform import Platform
 
@@ -23,7 +23,7 @@ class Level_01(Level):
                  [210, 70, 200, 400],
                  [210, 70, 600, 300],
                  [210, 70, 600, 300],
-                 HITBOX.BOTTOM_SCREEN]
+                 Hitbox.BOTTOM_SCREEN]
 
         # Go through the array above and add platforms
         for platform in level:

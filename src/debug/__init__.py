@@ -13,7 +13,8 @@ class DebugMain:
     LOG_ENABLED = True
 
     def Log(self, stringToPrint):
-        """Log the string if DEBUG_LOG_ENABLED in config is set to true."""
-        print(stringToPrint)
+        """Log the string if LOG_ENABLED is set to true."""
+        if self.LOG_ENABLED:
+            print(stringToPrint)
 
 DEBUG = DebugMain()

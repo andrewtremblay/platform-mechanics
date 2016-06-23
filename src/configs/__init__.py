@@ -14,9 +14,6 @@ TODO: create config files for the following adjectives
 
 """
 
-# python packages
-import json
-from pprint import pprint
 # local packages
 from .player import PLAYER
 from .world import WORLD

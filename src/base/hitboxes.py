@@ -13,3 +13,6 @@ class HITBOX:
                      conf.PLAYER.INITIAL.HEIGHT,
                      0,
                      conf.UI.SCREEN_HEIGHT]
+
+# apply to a global
+Hitbox = HITBOX()

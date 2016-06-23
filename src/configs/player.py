@@ -22,12 +22,13 @@ class PlayerConfig:
     class INITIAL:
         WIDTH = 40  # width of the player base sprite
         HEIGHT = 60  # height of the player base sprite
-        FULL_HOP_JUMP_SPEED = -12 # a regular hold-button-to-jump jump
+        FULL_HOP_JUMP_SPEED = -12  # a regular hold-button-to-jump jump
         SHORT_HOP_JUMP_SPEED = -6  # used when jumping right out of a crouch
 
     # Movement (only horizontal right now)
     class MOVE:
-        HORIZ_SPEED = 6  # walking left and right in both air and on platorms
+        HORIZ_SPEED = 6  # walking left and right on platorms
+        HORIZ_AIR_SPEED = 3  # walking left and right in the air
 
     # Max values
     class MAX:

@@ -15,6 +15,10 @@ from configs import PLAYER as P
 from .jumpstate import JumpState
 
 
+RIGHT = 1
+LEFT = -1
+
+
 class Player(pygame.sprite.Sprite):
     """Represents the sprite that the player controls."""
 
@@ -34,6 +38,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
         # Set initial speed vector of player
+        self.facing = 0
         self.change_x = 0
         self.change_y = 0
 
@@ -81,7 +86,7 @@ class Player(pygame.sprite.Sprite):
                 elif self.change_y < 0:
                     self.rect.top = block.rect.bottom
                 self.change_y = 0
-        # handle debug jump state
+        # debug the jump state whenever it changes
         if self.DEBUG_PREV_JUMP_STATE != self.jump_state:
             DEBUG.Log("jump state change " + self.jump_state.name)
             self.DEBUG_PREV_JUMP_STATE = self.jump_state
@@ -141,11 +146,21 @@ class Player(pygame.sprite.Sprite):
     # Player-controlled movement:
     def go_left(self):
         """Called when the user hits the left arrow."""
-        self.change_x = -(P.MOVE.HORIZ_SPEED)
+        self.facing = LEFT
+        self.set_moving_forward()
 
     def go_right(self):
         """Called when the user hits the right arrow."""
-        self.change_x = (P.MOVE.HORIZ_SPEED)
+        self.facing = RIGHT
+        self.set_moving_forward()
+
+    def set_moving_forward(self):
+        """Called when the player needs to move forward."""
+        if self.jump_state == JumpState.grounded:
+            self.change_x = self.facing * (P.MOVE.HORIZ_SPEED)
+        else:
+            self.change_x = self.facing * (P.MOVE.HORIZ_AIR_SPEED)
+            # TODO: have a more sophisticated air manipulation control
 
     def stop(self):
         """Called when the user lets off the keyboard."""
